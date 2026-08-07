@@ -1,7 +1,9 @@
 import asyncio
+import logging
 from pathlib import Path
+from time import perf_counter
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Response
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -36,7 +38,23 @@ from app.services.vision_service import (
 )
 
 app = FastAPI(title="NYC Street Collision Risk API", version="0.1.0")
+logger = logging.getLogger(__name__)
 FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+
+
+@app.middleware("http")
+async def log_request_timing(request: Request, call_next):
+    started = perf_counter()
+    status_code = 500
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        return response
+    finally:
+        logger.info(
+            "http_request_completed method=%s path=%s status=%d duration_seconds=%.3f",
+            request.method, request.url.path, status_code, perf_counter() - started,
+        )
 
 
 def search_parameters(

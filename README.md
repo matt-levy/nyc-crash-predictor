@@ -57,6 +57,8 @@ Historical risk results are cached for 6 hours by default, and full per-camera r
 
 The map cache is intentionally ephemeral for the hackathon MVP. A Cloud Run instance restart loses its cached result, and multiple Cloud Run instances do not share cache state. Persistent shared storage can be introduced later if required.
 
+Runtime logs use searchable event names such as `camera_catalog_fetch_*`, `nyc_crash_query_*`, `roboflow_workflow_*`, `map_camera_analysis_*`, `gemini_explanation_*`, `analysis_cache_*`, and `http_request_completed`. They include durations, camera IDs, counts, and exception types, but never API keys or raw model payloads.
+
 ## Docker and Cloud Run
 
 ```powershell

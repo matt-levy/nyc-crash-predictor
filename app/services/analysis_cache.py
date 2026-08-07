@@ -1,8 +1,11 @@
 import asyncio
 import copy
+import logging
 import os
 from time import monotonic
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 class TTLCache:
@@ -24,11 +27,14 @@ class TTLCache:
         async with self._lock:
             item = self._items.get(key)
             if item is None:
+                logger.info("analysis_cache_miss cache=%s", self._ttl_env)
                 return None
             expires_at, value = item
             if expires_at <= monotonic():
                 self._items.pop(key, None)
+                logger.info("analysis_cache_expired cache=%s", self._ttl_env)
                 return None
+            logger.info("analysis_cache_hit cache=%s", self._ttl_env)
             return copy.deepcopy(value)
 
     async def set(self, key: tuple[Any, ...], value: Any) -> None:

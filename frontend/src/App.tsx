@@ -55,7 +55,7 @@ export default function App() {
       </button>
       <RiskLegend />
 
-      {!loading && notGenerated && (
+      {!loading && notGenerated && !error && (
         <div className="empty-overlay">
           <p className="eyebrow">No current risk data</p>
           <h2>Analyze NYC street conditions</h2>
@@ -63,7 +63,17 @@ export default function App() {
         </div>
       )}
       {loading && !mapData && <div className="loading-overlay"><span className="spinner" /> Preparing map…</div>}
-      {error && <div className="toast" role="alert">{error}<button onClick={() => setError(null)}>×</button></div>}
+      {!loading && error && !mapData && (
+        <div className="empty-overlay">
+          <p className="eyebrow">Map request failed</p>
+          <h2>{error}</h2>
+          <button onClick={() => {
+            setLoading(true); setError(null);
+            loadMap().catch((reason: Error) => setError(reason.message)).finally(() => setLoading(false));
+          }}>Retry</button>
+        </div>
+      )}
+      {error && mapData && <div className="toast" role="alert">{error}<button onClick={() => setError(null)}>×</button></div>}
       {selected && <CameraDetails point={selected} onClose={() => setSelected(null)} />}
 
       <p className="disclaimer">

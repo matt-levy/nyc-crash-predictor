@@ -1,11 +1,15 @@
 import asyncio
 import json
+import logging
 import os
+from time import perf_counter
 from typing import Any
 
 from pydantic import ValidationError
 
 from app.models.risk import CameraRiskResponse, GeminiAnalysis
+
+logger = logging.getLogger(__name__)
 
 GEMINI_MODEL = "gemini-3.6-flash"
 SYSTEM_INSTRUCTION = """You explain structured evidence for a street-safety decision-support dashboard.
@@ -113,10 +117,21 @@ def _parse_response(response: Any) -> GeminiAnalysis:
 async def explain_risk(risk: CameraRiskResponse) -> GeminiAnalysis:
     api_key = require_api_key()
     evidence = build_evidence(risk)
+    started = perf_counter()
+    logger.info("gemini_explanation_started camera_id=%s model=%s", risk.camera.id, GEMINI_MODEL)
     try:
         response = await asyncio.to_thread(_generate, api_key, evidence)
     except Exception as exc:
+        logger.warning(
+            "gemini_explanation_failed camera_id=%s duration_seconds=%.3f error_type=%s",
+            risk.camera.id, perf_counter() - started, type(exc).__name__,
+        )
         if "timeout" in type(exc).__name__.lower() or "timed out" in str(exc).lower():
             raise GeminiTimeoutError("Gemini request timed out") from exc
         raise GeminiServiceError("Gemini request failed") from exc
-    return _parse_response(response)
+    analysis = _parse_response(response)
+    logger.info(
+        "gemini_explanation_completed camera_id=%s duration_seconds=%.3f",
+        risk.camera.id, perf_counter() - started,
+    )
+    return analysis

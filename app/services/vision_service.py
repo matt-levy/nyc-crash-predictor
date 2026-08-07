@@ -1,10 +1,14 @@
 import asyncio
+import logging
 import os
+from time import perf_counter
 from typing import Any
 
 from pydantic import ValidationError
 
 from app.models.risk import VisionDetection, VisionObservation
+
+logger = logging.getLogger(__name__)
 
 ROBOFLOW_API_URL = "https://serverless.roboflow.com"
 ROBOFLOW_WORKSPACE = "star-developer-4303"
@@ -87,10 +91,21 @@ def _run_workflow(image_url: str, api_key: str) -> Any:
 
 async def analyze_image_url(image_url: str) -> VisionObservation:
     api_key = require_api_key()
+    started = perf_counter()
+    logger.info("roboflow_workflow_started workflow_id=%s", ROBOFLOW_WORKFLOW_ID)
     try:
         result = await asyncio.to_thread(_run_workflow, image_url, api_key)
     except Exception as exc:
+        logger.warning(
+            "roboflow_workflow_failed duration_seconds=%.3f error_type=%s",
+            perf_counter() - started, type(exc).__name__,
+        )
         if "timeout" in type(exc).__name__.lower() or "timed out" in str(exc).lower():
             raise VisionTimeoutError("Roboflow Workflow request timed out") from exc
         raise VisionServiceError("Roboflow Workflow request failed") from exc
-    return normalize_workflow_result(result)
+    observation = normalize_workflow_result(result)
+    logger.info(
+        "roboflow_workflow_completed duration_seconds=%.3f detection_count=%d",
+        perf_counter() - started, len(observation.detections),
+    )
+    return observation

@@ -1,11 +1,15 @@
 from dataclasses import dataclass
 import asyncio
+import logging
 import os
+from time import perf_counter
 
 import httpx
 from pydantic import ValidationError
 
 from app.models.risk import Camera
+
+logger = logging.getLogger(__name__)
 
 
 CAMERAS = [
@@ -61,17 +65,28 @@ async def fetch_camera_catalog() -> list[Camera]:
     payload = None
     async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
         for attempt in range(3):
+            started = perf_counter()
             try:
+                logger.info("camera_catalog_fetch_started attempt=%d timeout_seconds=%.1f", attempt + 1, timeout)
                 response = await client.get(CAMERA_CATALOG_URL)
                 response.raise_for_status()
                 payload = response.json()
+                logger.info(
+                    "camera_catalog_fetch_completed attempt=%d duration_seconds=%.3f",
+                    attempt + 1, perf_counter() - started,
+                )
                 break
             except (httpx.HTTPError, ValueError) as exc:
                 last_error = exc
+                logger.warning(
+                    "camera_catalog_fetch_failed attempt=%d duration_seconds=%.3f error_type=%s",
+                    attempt + 1, perf_counter() - started, type(exc).__name__,
+                )
                 if attempt < 2:
                     await asyncio.sleep(0.5 * (2 ** attempt))
     if payload is None:
         if CAMERAS:
+            logger.warning("camera_catalog_fallback_used camera_count=%d", len(CAMERAS))
             return CAMERAS.copy()
         if isinstance(last_error, httpx.TimeoutException):
             raise CameraCatalogError("NYC DOT camera catalog request timed out") from last_error
@@ -92,10 +107,12 @@ async def fetch_camera_catalog() -> list[Camera]:
     if not cameras:
         raise CameraCatalogError("NYC DOT camera catalog returned no cameras")
     CAMERAS[:] = cameras
+    logger.info("camera_catalog_normalized camera_count=%d", len(cameras))
     return cameras.copy()
 
 
 async def fetch_snapshot(camera: Camera) -> Snapshot:
+    started = perf_counter()
     try:
         async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
             response = await client.get(camera.image_url)
@@ -107,6 +124,10 @@ async def fetch_snapshot(camera: Camera) -> Snapshot:
     content_type = response.headers.get("content-type", "")
     if not content_type.lower().startswith("image/") or not response.content:
         raise CameraSnapshotError("NYC DOT camera returned an invalid image response")
+    logger.info(
+        "camera_snapshot_completed camera_id=%s duration_seconds=%.3f bytes=%d",
+        camera.id, perf_counter() - started, len(response.content),
+    )
     return Snapshot(content=response.content, content_type=content_type.split(";", 1)[0])
 
 

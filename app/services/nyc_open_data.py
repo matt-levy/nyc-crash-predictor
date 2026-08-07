@@ -1,10 +1,14 @@
 import os
+import logging
 from datetime import datetime, timedelta, timezone
+from time import perf_counter
 from typing import Any
 
 import httpx
 
 from app.models.risk import CrashRecord
+
+logger = logging.getLogger(__name__)
 
 DATASET_URL = "https://data.cityofnewyork.us/resource/h9gi-nx95.json"
 SELECT_FIELDS = ",".join(
@@ -70,6 +74,11 @@ async def get_nearby_crashes(
     if token := os.getenv("NYC_OPEN_DATA_APP_TOKEN"):
         headers["X-App-Token"] = token
     params = {"$select": SELECT_FIELDS, "$where": where, "$order": "crash_date DESC", "$limit": 50000}
+    started = perf_counter()
+    logger.info(
+        "nyc_crash_query_started latitude=%.6f longitude=%.6f radius_meters=%d days=%d",
+        latitude, longitude, radius_meters, days,
+    )
     try:
         async with httpx.AsyncClient(timeout=15.0, headers=headers) as client:
             response = await client.get(DATASET_URL, params=params)
@@ -81,4 +90,9 @@ async def get_nearby_crashes(
         raise NYCOpenDataError("NYC Open Data request failed") from exc
     if not isinstance(payload, list):
         raise NYCOpenDataError("NYC Open Data returned an unexpected response")
-    return [_normalize(row) for row in payload]
+    records = [_normalize(row) for row in payload]
+    logger.info(
+        "nyc_crash_query_completed duration_seconds=%.3f record_count=%d",
+        perf_counter() - started, len(records),
+    )
+    return records
