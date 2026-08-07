@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from app.models.risk import Camera
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")
 
 
 CAMERAS = [

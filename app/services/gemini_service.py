@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from app.models.risk import CameraRiskResponse, GeminiAnalysis
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")
 
 GEMINI_MODEL = "gemini-3.6-flash"
 SYSTEM_INSTRUCTION = """You explain structured evidence for a street-safety decision-support dashboard.

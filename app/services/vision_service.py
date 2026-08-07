@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from app.models.risk import VisionDetection, VisionObservation
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")
 
 ROBOFLOW_API_URL = "https://serverless.roboflow.com"
 ROBOFLOW_WORKSPACE = "star-developer-4303"

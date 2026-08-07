@@ -38,7 +38,7 @@ from app.services.vision_service import (
 )
 
 app = FastAPI(title="NYC Street Collision Risk API", version="0.1.0")
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")
 FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 
 

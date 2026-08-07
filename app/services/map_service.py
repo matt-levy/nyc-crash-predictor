@@ -9,7 +9,7 @@ from app.models.risk import (
     Camera, CameraRiskResponse, MapCameraFailure, MapRiskPoint, MapRiskResult,
 )
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")
 
 CameraAnalyzer = Callable[[Camera], Awaitable[CameraRiskResponse]]
 

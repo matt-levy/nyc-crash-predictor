@@ -8,7 +8,7 @@ import httpx
 
 from app.models.risk import CrashRecord
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")
 
 DATASET_URL = "https://data.cityofnewyork.us/resource/h9gi-nx95.json"
 SELECT_FIELDS = ",".join(
