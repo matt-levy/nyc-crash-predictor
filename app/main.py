@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Response
@@ -6,9 +7,10 @@ from fastapi.staticfiles import StaticFiles
 
 from app.models.risk import (
     Camera, CameraAnalysisResponse, CameraRiskExplanationResponse, CameraRiskResponse,
-    CrashRecord, MapNotGenerated, MapRefreshResponse, MapRiskResult, RiskResponse,
-    VisionObservation,
+    CrashRecord, HistoricalRisk, MapNotGenerated, MapRefreshResponse, MapRiskResult,
+    RiskResponse, VisionObservation,
 )
+from app.services.analysis_cache import camera_risk_cache, historical_risk_cache
 from app.services.camera_service import (
     CameraCatalogError,
     CameraNotFoundError,
@@ -17,7 +19,6 @@ from app.services.camera_service import (
     fetch_camera_catalog,
     get_camera,
     list_cameras,
-    verify_snapshot_available,
 )
 from app.services.combined_risk import calculate_combined_risk
 from app.services.gemini_service import (
@@ -54,6 +55,24 @@ async def crashes_for(parameters: dict) -> list[CrashRecord]:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
+def historical_cache_key(parameters: dict) -> tuple:
+    return (
+        round(parameters["latitude"], 6), round(parameters["longitude"], 6),
+        parameters["radius_meters"], parameters["days"],
+    )
+
+
+async def historical_for(parameters: dict) -> HistoricalRisk:
+    key = historical_cache_key(parameters)
+    cached = await historical_risk_cache.get(key)
+    if cached is not None:
+        return cached
+    crashes = await crashes_for(parameters)
+    historical = calculate_historical_risk(crashes=crashes, **parameters)
+    await historical_risk_cache.set(key, historical)
+    return historical
+
+
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -66,8 +85,7 @@ async def nearby(parameters: dict = Depends(search_parameters)) -> list[CrashRec
 
 @app.get("/risk", response_model=RiskResponse)
 async def risk(parameters: dict = Depends(search_parameters)) -> RiskResponse:
-    crashes = await crashes_for(parameters)
-    historical = calculate_historical_risk(crashes=crashes, **parameters)
+    historical = await historical_for(parameters)
     return RiskResponse(historical_risk=historical)
 
 
@@ -88,10 +106,7 @@ async def analyze_camera(selected: Camera) -> VisionObservation:
         raise HTTPException(status_code=409, detail="Camera is offline")
     try:
         require_api_key()
-        await verify_snapshot_available(selected)
         return await analyze_image_url(selected.image_url)
-    except CameraSnapshotError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
     except VisionConfigurationError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except VisionTimeoutError as exc:
@@ -138,26 +153,33 @@ async def camera_risk(
 
 
 async def build_camera_risk(
-    selected: Camera, radius_meters: int, days: int
+    selected: Camera, radius_meters: int, days: int, force_refresh: bool = False,
 ) -> CameraRiskResponse:
+    cache_key = (selected.id, radius_meters, days)
+    if not force_refresh:
+        cached = await camera_risk_cache.get(cache_key)
+        if cached is not None:
+            return cached
     parameters = {
         "latitude": selected.latitude,
         "longitude": selected.longitude,
         "radius_meters": radius_meters,
         "days": days,
     }
-    vision = await analyze_camera(selected)
+    vision, historical = await asyncio.gather(
+        analyze_camera(selected), historical_for(parameters)
+    )
     spatial = analyze_spatial_conflicts(vision)
-    crashes = await crashes_for(parameters)
-    historical = calculate_historical_risk(crashes=crashes, **parameters)
     combined = calculate_combined_risk(historical, vision, spatial)
-    return CameraRiskResponse(
+    result = CameraRiskResponse(
         camera=selected,
         historical_risk=historical,
         current_conditions=vision,
         spatial_conflicts=spatial,
         combined_risk=combined,
     )
+    await camera_risk_cache.set(cache_key, result)
+    return result
 
 
 @app.get(
@@ -196,7 +218,9 @@ async def refresh_risk_map(
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     async def analyze(selected: Camera) -> CameraRiskResponse:
-        return await build_camera_risk(selected, radius_meters=250, days=365)
+        return await build_camera_risk(
+            selected, radius_meters=250, days=365, force_refresh=True
+        )
 
     result = await generate_map_result(cameras, area, limit, analyze)
     await map_risk_cache.set(result)

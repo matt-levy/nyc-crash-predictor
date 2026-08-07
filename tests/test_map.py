@@ -126,7 +126,7 @@ def test_refresh_updates_cache_and_get_does_no_analysis(monkeypatch):
     async def catalog():
         return [camera(1), camera(2), camera(3, "Queens")]
 
-    async def analyze(selected, radius_meters, days):
+    async def analyze(selected, radius_meters, days, force_refresh=False):
         nonlocal calls
         calls += 1
         return risk(selected, 60 + calls)

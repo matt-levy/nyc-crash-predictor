@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+import asyncio
+import os
 
 import httpx
 from pydantic import ValidationError
@@ -52,14 +54,28 @@ def get_camera(camera_id: str) -> Camera:
 async def fetch_camera_catalog() -> list[Camera]:
     """Fetch current public metadata and retain it for later per-camera lookups."""
     try:
-        async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
-            response = await client.get(CAMERA_CATALOG_URL)
-            response.raise_for_status()
-            payload = response.json()
-    except httpx.TimeoutException as exc:
-        raise CameraCatalogError("NYC DOT camera catalog request timed out") from exc
-    except (httpx.HTTPError, ValueError) as exc:
-        raise CameraCatalogError("NYC DOT camera catalog request failed") from exc
+        timeout = max(5.0, float(os.getenv("CAMERA_CATALOG_TIMEOUT_SECONDS", "60")))
+    except ValueError:
+        timeout = 60.0
+    last_error: Exception | None = None
+    payload = None
+    async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        for attempt in range(3):
+            try:
+                response = await client.get(CAMERA_CATALOG_URL)
+                response.raise_for_status()
+                payload = response.json()
+                break
+            except (httpx.HTTPError, ValueError) as exc:
+                last_error = exc
+                if attempt < 2:
+                    await asyncio.sleep(0.5 * (2 ** attempt))
+    if payload is None:
+        if CAMERAS:
+            return CAMERAS.copy()
+        if isinstance(last_error, httpx.TimeoutException):
+            raise CameraCatalogError("NYC DOT camera catalog request timed out") from last_error
+        raise CameraCatalogError("NYC DOT camera catalog request failed") from last_error
     if not isinstance(payload, list):
         raise CameraCatalogError("NYC DOT camera catalog returned an unexpected response")
     try:

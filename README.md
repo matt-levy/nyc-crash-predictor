@@ -53,6 +53,8 @@ The optional `/cameras/{camera_id}/risk/explain` endpoint sends only normalized 
 
 `POST /map/refresh` analyzes selected online cameras with bounded concurrency and stores lightweight heat-map points in memory; `GET /map/risk` only reads that cache and never invokes downstream analysis. Set `MAP_ANALYSIS_CONCURRENCY` to control parallel work (default 5, constrained to 1–20). Gemini is not used during map refresh.
 
+Historical risk results are cached for 6 hours by default, and full per-camera results are cached for 5 minutes so map selections and Gemini explanations can reuse the latest analysis. Configure these process-local TTLs with `HISTORICAL_RISK_CACHE_TTL_SECONDS` and `CAMERA_RISK_CACHE_TTL_SECONDS`. Map refresh always forces a new camera observation while reusing historical data. `CAMERA_CATALOG_TIMEOUT_SECONDS` defaults to 60 seconds; catalog requests retry and fall back to the last in-process catalog.
+
 The map cache is intentionally ephemeral for the hackathon MVP. A Cloud Run instance restart loses its cached result, and multiple Cloud Run instances do not share cache state. Persistent shared storage can be introduced later if required.
 
 ## Docker and Cloud Run
