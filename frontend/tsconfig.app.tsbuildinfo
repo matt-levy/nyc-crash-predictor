@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/config.ts","./src/main.tsx","./src/api/riskapi.ts","./src/components/cameradetails.tsx","./src/components/risklegend.tsx","./src/components/riskmap.tsx","./src/types/risk.ts"],"version":"5.7.3"}

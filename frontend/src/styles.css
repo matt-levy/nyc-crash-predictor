@@ -1,0 +1,59 @@
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #17201d;
+  background: #e8ebe7;
+  font-synthesis: none;
+}
+* { box-sizing: border-box; }
+html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+button { font: inherit; }
+.app-shell, .map { position: absolute; inset: 0; }
+.map { background: #dce2dd; }
+.map-header, .refresh-button, .legend, .camera-panel, .empty-overlay, .loading-overlay, .toast, .disclaimer {
+  position: fixed; z-index: 2;
+}
+.map-header { top: 18px; left: 18px; display: flex; align-items: center; gap: 10px; padding: 9px 14px; background: rgba(250,251,248,.92); border: 1px solid rgba(20,40,32,.12); border-radius: 12px; box-shadow: 0 8px 25px rgba(25,40,34,.12); backdrop-filter: blur(12px); }
+.map-header h1 { font-size: 15px; letter-spacing: -.01em; margin: 0; }
+.brand-mark { width: 10px; height: 10px; border-radius: 50%; background: #b52d3a; box-shadow: 0 0 0 4px rgba(181,45,58,.13); }
+.refresh-button { top: 18px; right: 18px; border: 1px solid rgba(20,40,32,.13); border-radius: 11px; padding: 10px 14px; background: rgba(250,251,248,.94); color: #17201d; display: flex; align-items: center; gap: 8px; box-shadow: 0 8px 25px rgba(25,40,34,.11); cursor: pointer; }
+.refresh-button:disabled { cursor: wait; opacity: .7; }
+.refresh-icon { width: 13px; height: 13px; border: 1.8px solid currentColor; border-left-color: transparent; border-radius: 50%; }
+.spinner { width: 14px; height: 14px; border: 2px solid rgba(23,32,29,.22); border-top-color: #17201d; border-radius: 50%; display: inline-block; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.legend { left: 18px; bottom: 58px; width: 180px; padding: 11px 12px; background: rgba(250,251,248,.9); border-radius: 10px; border: 1px solid rgba(20,40,32,.1); backdrop-filter: blur(10px); }
+.legend > span { display: block; font-size: 11px; font-weight: 700; margin-bottom: 7px; text-transform: uppercase; letter-spacing: .08em; }
+.legend-scale { height: 7px; border-radius: 6px; background: linear-gradient(90deg, #287a70, #e2a72e 52%, #a52336); }
+.legend-labels { display: flex; justify-content: space-between; margin-top: 4px; color: #58625e; }
+.camera-panel { top: 16px; right: 16px; bottom: 16px; width: min(380px, calc(100vw - 32px)); background: #f9faf7; border-radius: 16px; box-shadow: 0 18px 55px rgba(16,28,23,.26); overflow-y: auto; animation: panel-in .2s ease-out; }
+@keyframes panel-in { from { opacity: 0; transform: translateX(12px); } }
+.close-button { position: absolute; z-index: 1; top: 10px; right: 10px; width: 32px; height: 32px; border-radius: 50%; border: 0; color: white; background: rgba(10,20,16,.65); font-size: 23px; line-height: 1; cursor: pointer; }
+.snapshot { display: block; width: 100%; min-height: 190px; max-height: 230px; object-fit: cover; background: #dfe3df; }
+.panel-body { padding: 20px; }
+.eyebrow { margin: 0 0 6px; color: #68736e; font-size: 10px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+.panel-body h2, .empty-overlay h2 { margin: 0; font-size: 21px; line-height: 1.2; letter-spacing: -.025em; }
+.score-row { display: flex; align-items: center; justify-content: space-between; margin: 22px 0 10px; }
+.score-row > div { display: flex; align-items: baseline; gap: 8px; }
+.score-row strong { font-size: 42px; letter-spacing: -.06em; line-height: 1; }
+.score-row span { font-size: 12px; color: #66706c; }
+.risk-pill { padding: 6px 9px; border-radius: 999px; font-weight: 750; text-transform: capitalize; }
+.risk-pill.low { background: #dceee7; color: #176251; } .risk-pill.moderate { background: #f8e9bc; color: #7c5700; } .risk-pill.high { background: #f2d4d7; color: #8e1f2d; }
+.score-breakdown { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding-bottom: 18px; border-bottom: 1px solid #dde1dd; color: #66706c; font-size: 12px; }
+.score-breakdown span { display: flex; justify-content: space-between; padding: 9px 10px; background: #eef0ec; border-radius: 7px; }
+.observations { display: flex; flex-wrap: wrap; gap: 7px; margin: 17px 0; }
+.observations span { padding: 7px 9px; background: #edf0ec; border-radius: 7px; font-size: 12px; color: #52605a; }
+.observations b { color: #17201d; }
+.muted { color: #6b7571; font-size: 13px; margin: 18px 0; }
+.explain-button, .empty-overlay button { width: 100%; border: 0; border-radius: 9px; padding: 11px 14px; color: white; background: #213b33; cursor: pointer; font-weight: 700; }
+.explain-button:disabled { opacity: .55; cursor: wait; }
+.ai-analysis { margin-top: 18px; padding: 15px; border-radius: 10px; background: #e9efea; font-size: 13px; line-height: 1.5; }
+.ai-analysis ul { padding-left: 18px; }.recommendation { color: #3b4f47; font-weight: 650; }.error { color: #a52336; font-size: 12px; }
+.empty-overlay, .loading-overlay { top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(360px, calc(100vw - 36px)); padding: 24px; text-align: center; background: rgba(249,250,247,.95); border: 1px solid rgba(20,40,32,.1); border-radius: 15px; box-shadow: 0 20px 50px rgba(20,35,29,.18); }
+.empty-overlay h2 { margin-bottom: 18px; }.loading-overlay { width: auto; display: flex; align-items: center; gap: 9px; font-size: 13px; }
+.toast { top: 76px; left: 50%; transform: translateX(-50%); padding: 10px 12px; background: #7e2631; color: white; border-radius: 9px; font-size: 12px; box-shadow: 0 8px 24px rgba(40,0,5,.2); }
+.toast button { border: 0; background: none; color: white; margin-left: 12px; cursor: pointer; }
+.disclaimer { left: 50%; bottom: 9px; transform: translateX(-50%); width: min(680px, calc(100vw - 40px)); margin: 0; padding: 5px 9px; text-align: center; font-size: 10px; color: #4e5c56; background: rgba(250,251,248,.78); border-radius: 6px; backdrop-filter: blur(8px); }
+@media (max-width: 640px) {
+  .map-header { top: 10px; left: 10px; }.refresh-button { top: 10px; right: 10px; font-size: 0; padding: 11px; }.refresh-button span { margin: 0; }
+  .legend { left: 10px; bottom: 62px; width: 150px; }.camera-panel { inset: auto 8px 8px; width: auto; max-height: 76vh; }.snapshot { min-height: 150px; max-height: 190px; }
+  .disclaimer { bottom: 5px; font-size: 9px; }.maplibregl-ctrl-bottom-right { bottom: 45px; }
+}
