@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 from time import perf_counter
 from typing import Any
 
@@ -43,6 +44,21 @@ def require_api_key() -> str:
     if not api_key:
         raise GeminiConfigurationError("GEMINI_API_KEY is not configured")
     return api_key
+
+
+def _safe_error_details(exc: Exception, api_key: str) -> tuple[str, str, str]:
+    """Extract useful SDK error details without exposing credentials or payloads."""
+    status = getattr(exc, "code", None) or getattr(exc, "status_code", None)
+    reason = getattr(exc, "status", None) or getattr(exc, "reason", None)
+    message = getattr(exc, "message", None) or str(exc)
+    safe_message = str(message).replace(api_key, "[REDACTED]")
+    safe_message = re.sub(
+        r"(?i)(key|api[_-]?key)\s*[=:]\s*[^\s,;]+",
+        r"\1=[REDACTED]",
+        safe_message,
+    )
+    safe_message = " ".join(safe_message.split())[:500]
+    return str(status or "unknown"), str(reason or "unknown"), safe_message or "unknown"
 
 
 def build_evidence(risk: CameraRiskResponse) -> dict[str, Any]:
@@ -122,9 +138,12 @@ async def explain_risk(risk: CameraRiskResponse) -> GeminiAnalysis:
     try:
         response = await asyncio.to_thread(_generate, api_key, evidence)
     except Exception as exc:
+        status, reason, message = _safe_error_details(exc, api_key)
         logger.warning(
-            "gemini_explanation_failed camera_id=%s duration_seconds=%.3f error_type=%s",
+            "gemini_explanation_failed camera_id=%s duration_seconds=%.3f "
+            "error_type=%s status=%s reason=%s message=%s",
             risk.camera.id, perf_counter() - started, type(exc).__name__,
+            status, reason, message,
         )
         if "timeout" in type(exc).__name__.lower() or "timed out" in str(exc).lower():
             raise GeminiTimeoutError("Gemini request timed out") from exc

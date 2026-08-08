@@ -102,3 +102,20 @@ def test_api_failure(monkeypatch):
     monkeypatch.setattr(gemini_service, "_generate", fail)
     with pytest.raises(gemini_service.GeminiServiceError, match="request failed"):
         asyncio.run(gemini_service.explain_risk(risk_response()))
+
+
+def test_error_details_are_sanitized():
+    class ClientError(Exception):
+        code = 403
+        status = "PERMISSION_DENIED"
+        message = "api_key=test-secret\nAccess denied for test-secret"
+
+    status, reason, message = gemini_service._safe_error_details(
+        ClientError(), "test-secret"
+    )
+
+    assert status == "403"
+    assert reason == "PERMISSION_DENIED"
+    assert "test-secret" not in message
+    assert "[REDACTED]" in message
+    assert "\n" not in message
